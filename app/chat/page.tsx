@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { ChatWindow } from "@/components/chat/ChatWindow"
 import { ChatInput } from "@/components/chat/ChatInput"
 import { LogoFull, LogoHero } from "@/components/Logo"
+import { useVoiceOutput } from "@/lib/hooks/use-voice-output"
+import { Volume2, VolumeX } from "lucide-react"
 import type { Message } from "@/lib/ai/providers/types"
 
 interface ChatMessage {
@@ -23,9 +25,28 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  const { isSpeaking, isSupported: ttsSupported, speak, stop } = useVoiceOutput()
+
+  // Auto-speak new assistant messages when voice is enabled
+  const lastMessageCount = messages.length
+  useEffect(() => {
+    if (!voiceEnabled || lastMessageCount === 0) return
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg?.role === "assistant") {
+      speak(lastMsg.content)
+    }
+  }, [lastMessageCount, voiceEnabled, messages, speak])
 
   const handleSend = useCallback(async (message: string) => {
     if (!message.trim() || isStreaming) return
+
+    // Stop any current speech
+    if (isSpeaking) stop()
 
     const userMessage: ChatMessage = { role: "user", content: message }
     setMessages((prev) => [...prev, userMessage])
@@ -104,7 +125,7 @@ export default function ChatPage() {
       setIsStreaming(false)
       setStreamingContent("")
     }
-  }, [messages, isStreaming])
+  }, [messages, isStreaming, isSpeaking, stop])
 
   const handleAction = useCallback(
     (actionMessage: string) => {
@@ -122,18 +143,40 @@ export default function ChatPage() {
         <div className="flex items-center gap-2.5">
           <LogoFull />
         </div>
-        <a
-          href="/api/auth/logout"
-          className="text-[13px] text-[#555] hover:text-[#999] transition-colors"
-        >
-          Sign out
-        </a>
+        <div className="flex items-center gap-3">
+          {/* Voice toggle — only render after mount to avoid hydration mismatch */}
+          {mounted && ttsSupported && (
+            <button
+              onClick={() => {
+                if (isSpeaking) stop()
+                setVoiceEnabled((v) => !v)
+              }}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                voiceEnabled
+                  ? "bg-[#FF5200]/15 text-[#FF5200]"
+                  : "text-[#555] hover:text-[#999]"
+              }`}
+              title={voiceEnabled ? "Voice responses on" : "Voice responses off"}
+            >
+              {voiceEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
+          )}
+          <a
+            href="/api/auth/logout"
+            className="text-[13px] text-[#555] hover:text-[#999] transition-colors"
+          >
+            Sign out
+          </a>
+        </div>
       </header>
 
       {/* Main chat area */}
       <div className="flex-1 overflow-hidden relative">
         {showSuggestions ? (
-          /* Empty state with suggestions */
           <div className="h-full flex flex-col items-center justify-center px-6">
             <div className="text-center space-y-5 max-w-md">
               <LogoHero />
