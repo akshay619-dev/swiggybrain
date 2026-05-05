@@ -31,6 +31,7 @@ The LLM (OpenAI GPT-4o primary, Claude fallback) orchestrates all 35 Swiggy MCP 
 | Framework | Next.js 16.2, React 19, TypeScript |
 | Styling | Tailwind CSS 4, shadcn/ui |
 | AI | OpenAI GPT-4o + Anthropic Claude (fallback) |
+| Voice | Web Speech API (SpeechRecognition + SpeechSynthesis) |
 | APIs | Swiggy MCP — Food, Instamart, Dineout |
 | Auth | Swiggy OAuth 2.1 with PKCE |
 | Deployment | Vercel |
@@ -70,6 +71,10 @@ swiggybrain/
 │   │       ├── openai.ts               # OpenAI GPT-4o implementation
 │   │       ├── anthropic.ts            # Claude implementation
 │   │       └── fallback.ts             # Primary/secondary fallback + factory
+│   │
+│   ├── hooks/                           # Custom React hooks
+│   │   ├── use-voice-input.ts           # Speech-to-text via Web Speech API
+│   │   └── use-voice-output.ts          # Text-to-speech via SpeechSynthesis API
 │   │
 │   ├── auth/                            # Authentication
 │   │   ├── pkce.ts                      # PKCE code verifier/challenge generation
@@ -219,6 +224,30 @@ Request → OpenAI GPT-4o
                   ▼
               Claude Sonnet → stream response
 ```
+
+## Voice Mode
+
+SwiggyBrain supports hands-free voice interaction using the Web Speech API — no extra API keys or backend changes required.
+
+**Voice Input (Mic button):**
+- Click the mic icon next to the text input to start listening
+- Speak naturally — live transcript appears in the input field
+- When you stop speaking, the message auto-sends
+- Uses `en-IN` (Indian English) for better recognition of food and restaurant names
+- Works in Chrome, Edge, and Safari
+
+**Voice Output (Speaker toggle):**
+- Click the speaker icon in the header to enable voice responses
+- SwiggyBrain reads every response aloud, skipping card data and formatting
+- Pronounces `₹` as "rupees" for natural delivery
+- Click again to disable, or click while speaking to stop
+
+**Full voice flow:**
+1. Enable speaker toggle (header) → click mic → say "lunch under 300"
+2. Message auto-sends → SwiggyBrain streams a recommendation
+3. Response is read aloud: "Here's a great pick for you. Chicken Shawarma Plate from The Bowl Company, rupees 228 with SWIGGYIT coupon..."
+
+No OpenAI Whisper or TTS API needed — runs entirely in the browser.
 
 ## Key Design Decisions
 
